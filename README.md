@@ -55,22 +55,6 @@ http://localhost:3000
 
 ---
 
-## 📂 Project Structure
-
-```
-📦 3d-glb-mediapipe-pose
- ┣ 📂 assets
- ┃ ┗ character.glb        # Your 3D model
- ┣ 📂 src
- ┃ ┣ index.html           # Main entry HTML
- ┃ ┣ main.js              # Three.js + MediaPipe integration
- ┃ ┣ pose-mapping.js      # Maps MediaPipe joints to character bones
- ┃ ┗ style.css            # Basic styling
- ┣ package.json
- ┗ README.md
-```
-
----
 
 ## 📌 Notes
 
