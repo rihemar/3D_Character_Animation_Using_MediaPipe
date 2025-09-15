@@ -30,7 +30,7 @@ Your webcam movements are mapped onto the 3D character, allowing it to mimic hum
 
 ```bash
 git clone https://github.com/rihemar/3D_Character_Animation_Using_MediaPipe
-cd cleanProjectTHREE
+cd .\3D_Character_Animation_Using_MediaPipe\
 ```
 
 ### 2️⃣ Run the Python MediaPipe server
