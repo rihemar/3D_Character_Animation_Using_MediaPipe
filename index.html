@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - additive animation - skinning</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			a {
+				color: blue;
+			}
+			.control-inactive button {
+				color: #888;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="container"></div>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - Skeletal Additive Animation Blending
+			(model from <a href="https://www.mixamo.com/" target="_blank" rel="noopener">mixamo.com</a>)<br/>
+		</div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js",
+					"three/addons/": "./jsm/"
+				}
+			}
+		</script>
+
+		<script type="module">
+
+			import * as THREE from 'three';
+
+			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { RGBELoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/RGBELoader.js';
+
+
+    
+let camera, scene, renderer;
+let model, skeleton, bones = {};
+let initialised = false;
+init();
+
+function init() {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.25, 20);
+  camera.position.set(0,3,3);
+
+
+  scene = new THREE.Scene();
+
+  new RGBELoader()
+    .load('royal_esplanade_1k.hdr', function (texture) {
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      scene.environment = texture;
+      scene.background = new THREE.Color(0xffffff);
+      render();
+    });
+
+  const loader = new GLTFLoader();
+  loader.load('Xbot.glb', async function (gltf) {
+    model = gltf.scene;
+
+    model.traverse(object => {
+      if (object.isSkinnedMesh) {
+        skeleton = object.skeleton;
+        skeleton.bones.forEach(bone => {
+          bones[bone.name] = bone;
+        });
+      }
+    });
+
+    // Raise arms by rotating shoulder and elbow bones
+    //raiseArms();
+    scene.add(model);
+    await renderer.compileAsync(model, camera, scene);
+  });
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
+  container.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.addEventListener('change', render);
+  controls.minDistance = 2;
+  controls.maxDistance = 10;
+  controls.target.set(0, 0.8,0);
+  controls.update();
+
+  window.addEventListener('resize', onWindowResize);
+  initialised = true;
+  setInterval(fetchPoseData, 100); // every 1000 ms (1fps)
+
+}
+
+function raiseArms() {
+  // Adjust bone names depending on your model’s rig
+  const leftShoulder = bones['shoulder.L_033'] || bones['shoulderL'] || bones['mixamorigLeftShoulder'];
+  const rightShoulder = bones['shoulder.R_034'] || bones['shoulderR'] || bones['mixamorigRightShoulder'];
+  const leftElbow = bones['upper_arm.L'] || bones['mixamorigLeftArm'];
+  const rightElbow = bones['upper_arm.R'] || bones['mixamorigRightArm'];
+
+  if (leftShoulder) {
+    // Raise left arm forward (rotate on X axis)
+    leftShoulder.rotation.x = -Math.PI / 2; // 90 degrees up
+  }
+  if (rightShoulder) {
+    // Raise right arm forward
+    rightShoulder.rotation.x = -Math.PI;
+  }
+  if (leftElbow) {
+    // Slight bend on left elbow
+    leftElbow.rotation.x = -Math.PI / 6; // 30 degrees
+    // leftElbow.rotation.y = Math.PI / 6; // Slight twist
+    // leftElbow.rotation.z = Math.PI / 6; // Slight twist
+  }
+  if (rightElbow) {
+    // Slight bend on right elbow
+    rightElbow.rotation.x = -Math.PI / 6;
+  }
+}
+
+
+function updatePose(l) {
+  // Adjust bone names depending on your model’s rig
+  const leftShoulder = bones['shoulder.L_033'] || bones['shoulderL'] || bones['mixamorigLeftArm'];
+  const rightShoulder = bones['shoulder.R_034'] || bones['shoulderR'] || bones['mixamorigRightArm'];
+  const leftElbow = bones['upper_arm.L'] || bones['mixamorigLeftForeArm'];
+  const rightElbow = bones['upper_arm.R'] || bones['mixamorigRightForeArm'];
+  const leftHip = bones['hip.L_032'] || bones['hipL'] || bones['mixamorigLeftUpLeg'];
+  const rightHip = bones['hip.R_031'] || bones['hipR'] || bones['mixamorigRightUpLeg'];
+  const leftKnee = bones['thigh.L'] || bones['mixamorigLeftLeg'];
+  const rightKnee = bones['thigh.R'] || bones['mixamorigRightLeg'];
+
+  if(l==[]|| l.length ===0){
+leftShoulder.rotation.z = 0;
+rightShoulder.rotation.z = 0;
+leftElbow.rotation.z =0;
+rightElbow.rotation.z =0;
+leftHip.rotation.z = 0;
+rightHip.rotation.z = 0;
+leftKnee.rotation.z = 0;
+rightKnee.rotation.z = 0;
+return;}
+  if (leftShoulder) {
+    // Raise left arm forward (rotate on X axis)
+    leftShoulder.rotation.z = +Math.PI+(l["RightShoulder"]*0.0174533); // 90 degrees up
+    leftShoulder.rotation.x = 0;
+    leftShoulder.rotation.y = 0; // Reset Z rotation if needed
+  }else{leftShoulder.rotation.z = 0;}
+  if (rightShoulder) {
+    // Raise left arm forward (rotate on X axis)
+    rightShoulder.rotation.z = Math.PI+(l["LeftShoulder"]*0.0174533); // 90 degrees up
+    rightShoulder.rotation.x =0;
+    rightShoulder.rotation.y =0;  }else{rightShoulder.rotation.z = 0;}
+  if (leftElbow) {
+    leftElbow.rotation.z =  Math.PI+(l["RightElbow"]*0.0174533);
+    leftElbow.rotation.y = 0; 
+    leftElbow.rotation.x = 0;
+  }else{leftElbow.rotation.z =0;}
+    if (rightElbow) {
+    rightElbow.rotation.z =  Math.PI+(l["LeftElbow"]*0.0174533);
+    rightElbow.rotation.y = 0; 
+    rightElbow.rotation.x = 0;
+  }else{rightElbow.rotation.z = Math.PI;}
+  if (leftHip) {
+    leftHip.rotation.z =  -Math.PI/2+(l["RightHip"]*0.0174533);
+    leftHip.rotation.y = 0; 
+    leftHip.rotation.x = 0;} else{leftHip.rotation.z = 0;}
+  if (rightHip) {
+    rightHip.rotation.z =  Math.PI/2+(l["LeftHip"]*0.0174533);
+    rightHip.rotation.y = 0;
+    rightHip.rotation.x = 0;} else{rightHip.rotation.z = 0;}
+  if (leftKnee) {
+    leftKnee.rotation.z =  Math.PI+(l["RightKnee"]*0.0174533);
+    leftKnee.rotation.y = 0; 
+    leftKnee.rotation.x = 0;} else{leftKnee.rotation.z = 0;}
+  if (rightKnee) {
+    rightKnee.rotation.z =  Math.PI+(l["LeftKnee"]*0.0174533);
+    rightKnee.rotation.y = 0; 
+    rightKnee.rotation.x = 0;} else{rightKnee.rotation.z = 0;}
+
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+
+
+//////////////////////////////////////
+
+
+
+let selectedBone = null;
+let boneGizmo = null;
+let currentAxis = null;
+
+// Create UI for axis rotation sliders
+const axisControls = document.createElement('div');
+axisControls.style.position = 'fixed';
+axisControls.style.bottom = '10px';
+axisControls.style.left = '10px';
+axisControls.style.padding = '10px';
+axisControls.style.background = '#eee';
+axisControls.style.border = '1px solid #ccc';
+axisControls.style.display = 'none';
+axisControls.style.zIndex = '1000';
+
+let value = 0;
+['x', 'y', 'z'].forEach(axis => {
+  const label = document.createElement('label');
+  label.innerText = `Rotate ${axis.toUpperCase()}: 0 `;
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = -180;
+  input.max = 180;
+  input.value = 0;
+  input.dataset.axis = axis;
+  input.oninput = (e) => {
+    if (selectedBone) {
+      const axis = e.target.dataset.axis;
+      selectedBone.rotation[axis] = THREE.MathUtils.degToRad(Number(e.target.value));
+      value = e.target.value;
+      label.innerText = `Rotate ${axis.toUpperCase()}: ${value}`;
+      updateGizmo();
+      render();
+    }
+  };
+  axisControls.appendChild(label);
+  axisControls.appendChild(input);
+  axisControls.appendChild(document.createElement('br'));
+});
+document.body.appendChild(axisControls);
+// Scrollable container
+const boneTableContainer = document.createElement('div');
+boneTableContainer.style.position = 'fixed';
+boneTableContainer.style.top = '10px';
+boneTableContainer.style.right = '10px';
+boneTableContainer.style.backgroundColor = '#fff';
+boneTableContainer.style.border = '1px solid #ccc';
+boneTableContainer.style.maxHeight = '90vh';
+boneTableContainer.style.overflowY = 'auto';
+boneTableContainer.style.zIndex = '1000';
+boneTableContainer.style.padding = '4px';
+
+// Bone table inside container
+const boneTable = document.createElement('table');
+boneTable.style.borderCollapse = 'collapse';
+boneTable.style.width = '100%';
+
+// Append table to container, then container to body
+boneTableContainer.appendChild(boneTable);
+document.body.appendChild(boneTableContainer);
+
+const waitForBones = setInterval(() => {
+  if (Object.keys(bones).length > 0) {
+    clearInterval(waitForBones);
+    for (const name in bones) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.innerText = name;
+      cell.style.cursor = 'pointer';
+      cell.style.padding = '4px 8px';
+      cell.onclick = () => selectBone(name);
+      row.appendChild(cell);
+      boneTable.appendChild(row);
+    }
+  }
+}, 200);
+
+// Select bone
+function selectBone(name) {
+  const bone = bones[name];
+  if (!bone) return;
+
+  selectedBone = bone;
+  createGizmoForBone(bone);
+  updateUIFromBone();
+  render();
+}
+
+// Create or update gizmo
+function createGizmoForBone(bone) {
+  if (boneGizmo) scene.remove(boneGizmo);
+
+  const group = new THREE.Group();
+
+  // Large semi-transparent sphere
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 })
+  );
+  group.add(sphere);
+
+  // X axis arrow
+  const xArrow = createArrow(0xff0000, new THREE.Vector3(1, 0, 0));
+  xArrow.name = 'X';
+  group.add(xArrow);
+
+  // Y axis arrow
+  const yArrow = createArrow(0x00ff00, new THREE.Vector3(0, 1, 0));
+  yArrow.name = 'Y';
+  group.add(yArrow);
+
+  // Z axis arrow
+  const zArrow = createArrow(0x0000ff, new THREE.Vector3(0, 0, 1));
+  zArrow.name = 'Z';
+  group.add(zArrow);
+
+  boneGizmo = group;
+  updateGizmo();
+  scene.add(boneGizmo);
+  axisControls.style.display = 'block';
+}
+
+// Create arrow helper
+function createArrow(color, dir) {
+  const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), 0.2, color, 0.05, 0.03);
+  return arrow;
+}
+
+// Update gizmo position to follow bone
+function updateGizmo() {
+  if (!selectedBone || !boneGizmo) return;
+  selectedBone.updateWorldMatrix(true, false);
+  selectedBone.getWorldPosition(boneGizmo.position);
+  selectedBone.getWorldQuaternion(boneGizmo.quaternion);
+}
+
+// Reflect bone rotation in sliders
+function updateUIFromBone() {
+  ['x', 'y', 'z'].forEach(axis => {
+    const input = axisControls.querySelector(`input[data-axis="${axis}"]`);
+    input.value = THREE.MathUtils.radToDeg(selectedBone.rotation[axis]).toFixed(1);
+  });
+}
+
+// Update gizmo every frame
+renderer.setAnimationLoop(() => {
+  if (boneGizmo) updateGizmo();
+  render();
+});
+async function fetchPoseData() {
+  try {
+    const response = await fetch('http://localhost:5000/pose');
+    if (!response.ok) {
+      console.error('Failed to fetch pose data:', response.statusText);
+      return;
+    }
+
+    const latestPose = await response.json();
+    console.log('Latest pose:', latestPose);
+    updatePose(latestPose);
+    console.log('Fetching pose data...');
+  } catch (err) {
+    console.error('Error fetching pose:', err);
+  }
+}
+
+
+		</script>
+
+	</body>
+</html>
